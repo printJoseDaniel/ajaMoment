@@ -111,7 +111,7 @@
         <button class="ghost" id="importBtn" title="Importar datos">Importar</button>
         <input type="file" id="importFile" accept="application/json" hidden />
         <span id="userBadge" class="pill" hidden></span>
-        <button class="secondary" id="loginBtn" title="Acceder">Acceder</button>
+        <button class="secondary" id="loginBtn" title="Acceder" hidden>Acceder</button>
         <button class="ghost" id="logoutBtn" title="Salir" hidden>Salir</button>
       </div>
     </header>
@@ -316,8 +316,7 @@
         const snap = await docRef.get();
         if(snap.exists){
           const data = snap.data();
-          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes();
-  if (window.cloud) cloud.init(); if(window.cloud) cloud.init(); }
+          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); if(window.cloud) cloud.init(); }
         } else {
           await docRef.set({ state: { books: state.books, notes: state.notes, selected: state.selected, filter: state.filter }, lastUpdated: Date.now() }, { merge:true });
         }
