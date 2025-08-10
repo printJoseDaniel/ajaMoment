@@ -93,19 +93,35 @@
       .app{grid-template-columns:1fr}
       .grid-2{grid-template-columns:1fr}
     }
+    /* Mobile-first tweaks */
+    .mobileOnly{display:none}
+    @media (max-width: 840px){
+      header{flex-wrap:wrap; gap:10px}
+      .actions{flex-wrap:wrap}
+      .actions button{padding:12px 14px}
+      .side{position:fixed; inset:0 auto 0 0; height:100dvh; width:min(88vw,420px); transform:translateX(-102%); transition:transform .2s ease; border-radius:0; overflow:auto; z-index:31}
+      .side.open{transform:translateX(0)}
+      .backdrop{position:fixed; inset:0; background:rgba(2,8,18,.6); z-index:30}
+      .mobileOnly{display:inline-flex}
+      .list{max-height:unset}
+      .panel .bd{padding:14px}
+    }
+      .grid-2{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
   <div class="app" role="application">
     <header>
       <div class="brand">
-        <div class="logo" aria-	hidden="true">BL</div>
+        <div class="logo" aria-hidden="true">BL</div>
         <div>
           <h1>Biblioteca de Lectores</h1>
           <small class="muted">Guardar libros. Capturar aprendizajes por voz.</small>
         </div>
       </div>
       <div class="actions">
+        <button class="secondary mobileOnly" id="librosBtn" title="Abrir biblioteca">Libros</button>
         <button id="addBookBtn" title="Añadir libro (A)">+ Añadir libro</button>
         <button class="secondary" id="exportBtn" title="Exportar datos">Exportar</button>
         <button class="ghost" id="importBtn" title="Importar datos">Importar</button>
@@ -134,6 +150,7 @@
         No hay libros. Pulsa <span class="kbd">A</span> o “Añadir libro”.
       </div>
     </aside>
+      <div id="drawerBackdrop" class="backdrop" hidden></div>
 
     <!-- Main -->
     <main class="main">
@@ -250,13 +267,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
   <script>
   // Configura tu proyecto Firebase antes de usar la nube
   // Ir a Firebase Console → Project settings → Your apps → CDN config
   window.FIREBASE_CONFIG = {
-    apiKey: "AIzaSyBgSGctZ61fwyrLGEVahTQLjQTcHfHFDUQ",
-    authDomain: "ajamoment-f55d8.firebaseapp.com",
-    projectId: "ajamoment-f55d8",
+    apiKey: "TU_API_KEY",
+    authDomain: "TU_AUTH_DOMAIN",
+    projectId: "TU_PROJECT_ID",
     // storageBucket: "…",
     // messagingSenderId: "…",
     // appId: "…"
@@ -291,7 +309,7 @@
   }
 
   window.cloud = {
-    inited:false, user:null, auth:null, db:null, saveTimer:null,
+    inited:false, user:null, auth:null, db:null, functions:null, saveTimer:null,
     init(){
       if(this.inited) return;
       if(!window.firebase || !window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.projectId){
@@ -304,6 +322,7 @@
         this.auth = firebase.auth();
         try { this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION); } catch(_) {}
         this.db = firebase.firestore();
+        try { this.functions = (firebase.app && firebase.app().functions) ? firebase.app().functions('europe-west1') : firebase.functions(); } catch(_) { try{ this.functions = firebase.functions(); }catch(_){} }
         if(this.db && this.db.enableIndexedDbPersistence){ this.db.enableIndexedDbPersistence().catch(()=>{}); }
         this.auth.onAuthStateChanged(u=>{ this.user=u; updateAuthUI(u); if(u){ this.loadRemote(); }});
         this.inited = true;
@@ -315,10 +334,9 @@
         const docRef = this.db.collection('users').doc(this.user.uid).collection('app').doc('state');
         const snap = await docRef.get();
         if(snap.exists){
-        const data = snap.data();
-        if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); if(window.cloud) cloud.init();
-  }
-      } else {
+          const data = snap.data();
+          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); }
+        } else {
           await docRef.set({ state: { books: state.books, notes: state.notes, selected: state.selected, filter: state.filter }, lastUpdated: Date.now() }, { merge:true });
         }
       }catch(e){ console.warn('Error cargando desde la nube', e); }
@@ -334,6 +352,14 @@
         const docRef = this.db.collection('users').doc(this.user.uid).collection('app').doc('state');
         await docRef.set({ state: { books: state.books, notes: state.notes, selected: state.selected, filter: state.filter }, lastUpdated: Date.now() }, { merge:true });
       }catch(e){ console.warn('Error subiendo a la nube', e); }
+    },
+    async transcribeBlob(blob){
+      if(!this.functions) throw new Error('Configura Firebase Functions y la función sttWhisper');
+      const toBase64 = (b)=> new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(b); });
+      const audioB64 = await toBase64(blob);
+      const callable = this.functions.httpsCallable('sttWhisper');
+      const resp = await callable({ audio: audioB64, mime: blob.type || 'audio/webm' });
+      return resp && resp.data && resp.data.text ? resp.data.text : '';
     },
     signInEmail(email,pass){ this.init(); return this.auth.signInWithEmailAndPassword(email,pass); },
     registerEmail(email,pass){ this.init(); return this.auth.createUserWithEmailAndPassword(email,pass); },
@@ -411,6 +437,7 @@
   function selectBook(id){
     state.selected = id; save();
     renderBooks(); renderDetails(); renderNotes();
+    if (window.matchMedia('(max-width: 840px)').matches) { try { closeDrawer(); } catch(_){} }
   }
 
   function renderDetails(){
@@ -481,7 +508,7 @@
     if(idx>-1){ arr.splice(idx,1); save(); renderNotes(); renderDetails(); }
   }
 
-  // --- Recorder (Web Speech API) ---
+  // --- Recorder (Web Speech API + Fallback for Firefox) ---
   const recLamp = document.getElementById('recLamp');
   const recLog = document.getElementById('recLog');
   const startBtn = document.getElementById('startRec');
@@ -490,13 +517,17 @@
 
   let recognition = null;
   let recActive = false;
+  let useWebSpeech = false;
+  let mediaRecorder = null, mediaStream = null, recChunks = [];
 
   function setupRecognition(){
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SR){
-      recLog.textContent = 'Dictado no disponible en este navegador.';
-      startBtn.disabled = true; return;
+      useWebSpeech = false;
+      recLog.textContent = 'Modo voz: fallback compatible con Firefox (graba y transcribe).';
+      startBtn.disabled = false; return;
     }
+    useWebSpeech = true;
     recognition = new SR();
     recognition.lang = 'es-ES';
     recognition.continuous = true;
@@ -519,23 +550,51 @@
       toggleRec(false);
     };
     recognition.onend = ()=>{
-      if(recActive){ // a veces se corta, reiniciamos
-        recognition.start();
-      } else {
-        recLamp.hidden = true;
-        recLog.textContent = 'Dictado detenido.';
-      }
+      if(recActive){ try{ recognition.start(); }catch{} }
+      else { recLamp.hidden = true; recLog.textContent = 'Dictado detenido.'; }
     };
   }
 
+  async function startFallbackRec(){
+    try{
+      if(!navigator.mediaDevices?.getUserMedia){ recLog.textContent = 'Micrófono no disponible.'; return; }
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let mime = 'audio/webm';
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported){
+        if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) mime = 'audio/webm;codecs=opus';
+        else if(MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) mime = 'audio/ogg;codecs=opus';
+      }
+      mediaRecorder = new MediaRecorder(mediaStream, { mimeType: mime });
+      recChunks = [];
+      mediaRecorder.ondataavailable = (e)=>{ if(e.data?.size) recChunks.push(e.data); };
+      mediaRecorder.onstop = async ()=>{
+        const blob = new Blob(recChunks, { type: mime });
+        recLog.textContent = 'Transcribiendo…';
+        try{
+          const text = await (window.cloud?.transcribeBlob ? cloud.transcribeBlob(blob) : Promise.reject(new Error('STT no configurado')));
+          if(text) noteInput.value = (noteInput.value + ' ' + text).trim();
+          recLog.textContent = text ? 'Transcripción lista.' : 'Sin resultado de STT.';
+        }catch(err){
+          recLog.textContent = 'Error transcribiendo: ' + (err?.message||err);
+        }finally{ stopFallbackStream(); }
+      };
+      mediaRecorder.start();
+      recActive = true; recLamp.hidden = false; recLog.textContent = 'Grabando…';
+    }catch(err){ recLog.textContent = 'No se pudo iniciar grabación: ' + (err?.message||err); }
+  }
+  function stopFallbackRec(){ try{ if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }catch{} recActive=false; recLamp.hidden=true; }
+  function stopFallbackStream(){ try{ mediaStream?.getTracks()?.forEach(t=>t.stop()); }catch{} finally { mediaStream=null; } }
+
   function toggleRec(on){
-    if(!recognition){ setupRecognition(); }
-    if(!recognition){ return }
-    if(on){
-      try{ recognition.start(); recActive = true; recLamp.hidden=false; recLog.textContent='Dictando…'; }catch{}
+    if(recognition===null && !useWebSpeech) setupRecognition();
+    if(useWebSpeech){
+      if(!recognition){ setupRecognition(); if(!useWebSpeech){ /* fallback */ } }
+    }
+    if(useWebSpeech && recognition){
+      if(on){ try{ recognition.start(); recActive = true; recLamp.hidden=false; recLog.textContent='Dictando…'; }catch{} }
+      else { try{ recognition.stop(); }catch{} recActive=false; recLamp.hidden=true; recLog.textContent='Dictado detenido.'; }
     } else {
-      try{ recognition.stop(); }catch{}
-      recActive = false; recLamp.hidden=true; recLog.textContent='Dictado detenido.';
+      if(on) startFallbackRec(); else stopFallbackRec();
     }
   }
 
@@ -567,6 +626,16 @@
   if(googleBtn){ googleBtn.addEventListener('click', async (e)=>{ e.preventDefault(); try{ await cloud.signInGoogle(); authDialog.close(); }catch(err){ authMsg.textContent = err?.message || 'No se pudo acceder con Google'; } }); }
 
   addBookBtn.addEventListener('click', ()=>{ addBookDialog.showModal(); bf_title.focus() });
+  // Mobile drawer controls
+  const librosBtn = document.getElementById('librosBtn');
+  const drawerBackdrop = document.getElementById('drawerBackdrop');
+  const sideEl = document.querySelector('.side');
+  function openDrawer(){ if(sideEl){ sideEl.classList.add('open'); if(drawerBackdrop) drawerBackdrop.hidden=false; } }
+  function closeDrawer(){ if(sideEl){ sideEl.classList.remove('open'); if(drawerBackdrop) drawerBackdrop.hidden=true; } }
+  if(librosBtn){ librosBtn.addEventListener('click', openDrawer); }
+  if(drawerBackdrop){ drawerBackdrop.addEventListener('click', closeDrawer); }
+  window.addEventListener('resize', ()=>{ if(window.innerWidth>1000) closeDrawer(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDrawer(); }); bf_title.focus() });
   function isEditableTarget(e){
     const el = document.activeElement || e.target;
     if(!el) return false;
