@@ -111,7 +111,7 @@
         <button class="ghost" id="importBtn" title="Importar datos">Importar</button>
         <input type="file" id="importFile" accept="application/json" hidden />
         <span id="userBadge" class="pill" hidden></span>
-        <button class="secondary" id="loginBtn" title="Acceder"Acceder</button>
+        <button class="secondary" id="loginBtn" title="Acceder">Acceder</button>
         <button class="ghost" id="logoutBtn" title="Salir" hidden>Salir</button>
       </div>
     </header>
@@ -302,7 +302,7 @@
       try{
         firebase.initializeApp(window.FIREBASE_CONFIG);
         this.auth = firebase.auth();
-	try { this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(_) {}
+        try { this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION); } catch(_) {}
         this.db = firebase.firestore();
         if(this.db && this.db.enableIndexedDbPersistence){ this.db.enableIndexedDbPersistence().catch(()=>{}); }
         this.auth.onAuthStateChanged(u=>{ this.user=u; updateAuthUI(u); if(u){ this.loadRemote(); }});
@@ -315,7 +315,7 @@
         const docRef = this.db.collection('users').doc(this.user.uid).collection('app').doc('state');
         const snap = await docRef.get();
         if(snap.exists){
-	const data = snap.data();
+        const data = snap.data();
         if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); if(window.cloud) cloud.init();
   }
       } else {
