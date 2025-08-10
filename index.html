@@ -302,6 +302,7 @@
       try{
         firebase.initializeApp(window.FIREBASE_CONFIG);
         this.auth = firebase.auth();
+	try { this.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch(_) {}
         this.db = firebase.firestore();
         if(this.db && this.db.enableIndexedDbPersistence){ this.db.enableIndexedDbPersistence().catch(()=>{}); }
         this.auth.onAuthStateChanged(u=>{ this.user=u; updateAuthUI(u); if(u){ this.loadRemote(); }});
@@ -315,7 +316,8 @@
         const snap = await docRef.get();
         if(snap.exists){
           const data = snap.data();
-          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); if(window.cloud) cloud.init(); }
+          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes();
+  if (window.cloud) cloud.init(); if(window.cloud) cloud.init(); }
         } else {
           await docRef.set({ state: { books: state.books, notes: state.notes, selected: state.selected, filter: state.filter }, lastUpdated: Date.now() }, { merge:true });
         }
