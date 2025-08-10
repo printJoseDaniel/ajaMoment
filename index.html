@@ -316,7 +316,8 @@
         const snap = await docRef.get();
         if(snap.exists){
           const data = snap.data();
-          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); if(window.cloud) cloud.init(); }
+          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); if(window.cloud) cloud.init();
+  }
         } else {
           await docRef.set({ state: { books: state.books, notes: state.notes, selected: state.selected, filter: state.filter }, lastUpdated: Date.now() }, { merge:true });
         }
