@@ -93,6 +93,7 @@
       .app{grid-template-columns:1fr}
       .grid-2{grid-template-columns:1fr}
     }
+
     /* Mobile-first tweaks */
     .mobileOnly{display:none}
     @media (max-width: 840px){
@@ -105,7 +106,6 @@
       .mobileOnly{display:inline-flex}
       .list{max-height:unset}
       .panel .bd{padding:14px}
-    }
       .grid-2{grid-template-columns:1fr}
     }
   </style>
@@ -150,7 +150,7 @@
         No hay libros. Pulsa <span class="kbd">A</span> o “Añadir libro”.
       </div>
     </aside>
-      <div id="drawerBackdrop" class="backdrop" hidden></div>
+    <div id="drawerBackdrop" class="backdrop" hidden></div>
 
     <!-- Main -->
     <main class="main">
@@ -209,6 +209,7 @@
       </section>
     </main>
   </div>
+
   <!-- Auth Modal -->
   <dialog id="authDialog" class="modal">
     <div class="hd"><strong>Accede a tu cuenta</strong></div>
@@ -264,17 +265,18 @@
     </form>
   </dialog>
 
+  <!-- Firebase (Compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+
   <script>
-  // Configura tu proyecto Firebase antes de usar la nube
-  // Ir a Firebase Console → Project settings → Your apps → CDN config
+  // Config Firebase (sin conflictos de merge)
   window.FIREBASE_CONFIG = {
     apiKey: "AIzaSyBgSGctZ61fwyrLGEVahTQLjQTcHfHFDUQ",
-    authDomain: " ajamoment-f55d8.firebaseapp.com",
-    projectId: "ajamoment-f55d8",
+    authDomain: "ajamoment-f55d8.firebaseapp.com",
+    projectId: "ajamoment-f55d8"
     // storageBucket: "…",
     // messagingSenderId: "…",
     // appId: "…"
@@ -508,7 +510,7 @@
     if(idx>-1){ arr.splice(idx,1); save(); renderNotes(); renderDetails(); }
   }
 
-  // --- Recorder (Web Speech API + Fallback for Firefox) ---
+  // --- Recorder (Web Speech API + Fallback para Firefox) ---
   const recLamp = document.getElementById('recLamp');
   const recLog = document.getElementById('recLog');
   const startBtn = document.getElementById('startRec');
@@ -626,16 +628,20 @@
   if(googleBtn){ googleBtn.addEventListener('click', async (e)=>{ e.preventDefault(); try{ await cloud.signInGoogle(); authDialog.close(); }catch(err){ authMsg.textContent = err?.message || 'No se pudo acceder con Google'; } }); }
 
   addBookBtn.addEventListener('click', ()=>{ addBookDialog.showModal(); bf_title.focus() });
+
   // Mobile drawer controls
   const librosBtn = document.getElementById('librosBtn');
   const drawerBackdrop = document.getElementById('drawerBackdrop');
   const sideEl = document.querySelector('.side');
+
   function openDrawer(){ if(sideEl){ sideEl.classList.add('open'); if(drawerBackdrop) drawerBackdrop.hidden=false; } }
   function closeDrawer(){ if(sideEl){ sideEl.classList.remove('open'); if(drawerBackdrop) drawerBackdrop.hidden=true; } }
+
   if(librosBtn){ librosBtn.addEventListener('click', openDrawer); }
   if(drawerBackdrop){ drawerBackdrop.addEventListener('click', closeDrawer); }
   window.addEventListener('resize', ()=>{ if(window.innerWidth>1000) closeDrawer(); });
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDrawer(); }); bf_title.focus() });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDrawer(); });
+
   function isEditableTarget(e){
     const el = document.activeElement || e.target;
     if(!el) return false;
@@ -645,6 +651,7 @@
     if(el.closest && el.closest('[contenteditable="true"], input, textarea, select')) return true;
     return false;
   }
+
   document.addEventListener('keydown', (e)=>{
     // Evita atajos cuando estás escribiendo en inputs/textarea/select o contentEditable
     if(isEditableTarget(e)) return;
@@ -730,3 +737,4 @@
   </script>
 </body>
 </html>
+
