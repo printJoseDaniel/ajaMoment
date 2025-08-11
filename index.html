@@ -105,6 +105,9 @@
       .mobileOnly{display:inline-flex}
       .list{max-height:unset}
       .panel .bd{padding:14px}
+    }
+      .grid-2{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
@@ -269,9 +272,9 @@
   // Configura tu proyecto Firebase antes de usar la nube
   // Ir a Firebase Console → Project settings → Your apps → CDN config
   window.FIREBASE_CONFIG = {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_AUTH_DOMAIN",
-    projectId: "TU_PROJECT_ID",
+    apiKey: "AIzaSyBgSGctZ61fwyrLGEVahTQLjQTcHfHFDUQ",
+    authDomain: " ajamoment-f55d8.firebaseapp.com",
+    projectId: "ajamoment-f55d8",
     // storageBucket: "…",
     // messagingSenderId: "…",
     // appId: "…"
@@ -332,20 +335,7 @@
         const snap = await docRef.get();
         if(snap.exists){
           const data = snap.data();
-          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes();
-  if(window.cloud) cloud.init();
-
-  // Simple on-screen error reporting (útil en móvil)
-  window.addEventListener('error', (e)=>{
-    console.error('JS error:', e.message, e);
-    const log = document.getElementById('recLog');
-    if(log) log.textContent = 'Error de script: ' + (e.message||'desconocido');
-  });
-  window.addEventListener('unhandledrejection', (e)=>{
-    console.error('Promise rejection:', e.reason);
-    const log = document.getElementById('recLog');
-    if(log) log.textContent = 'Error async: ' + (e.reason?.message||e.reason||'desconocido');
-  }); }
+          if(data && data.state){ Object.assign(state, data.state); save(); renderBooks(); renderDetails(); renderNotes(); }
         } else {
           await docRef.set({ state: { books: state.books, notes: state.notes, selected: state.selected, filter: state.filter }, lastUpdated: Date.now() }, { merge:true });
         }
@@ -645,7 +635,7 @@
   if(librosBtn){ librosBtn.addEventListener('click', openDrawer); }
   if(drawerBackdrop){ drawerBackdrop.addEventListener('click', closeDrawer); }
   window.addEventListener('resize', ()=>{ if(window.innerWidth>1000) closeDrawer(); });
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDrawer(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeDrawer(); }); bf_title.focus() });
   function isEditableTarget(e){
     const el = document.activeElement || e.target;
     if(!el) return false;
